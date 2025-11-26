@@ -280,10 +280,45 @@ networks:
     + http://blanco.test
 
 11. Instalar autenticación (login, registro, logout):
+    + Para ingresar en la terminal del contenedor:
+        ```bash
+        docker exec -u root -it app bash
+        # o
+        docker compose exec -u root -it app bash
+        ```
+    + Laravel Breeze
+        ```bash
+        composer require laravel/breeze --dev
+        php artisan breeze:install
+        npm install
+        npm run build
+        php artisan migrate
+        ```
+    + Laravel Jetstream
+        ```bash
+        # Instalar Jetstream
+        composer require laravel/jetstream
+        
+        # Elegir stack (Inertia o Livewire)
+        # Livewire + Blade:
+        # php artisan jetstream:install livewire
+        # Inertia + Vue:
+        php artisan jetstream:install inertia
+
+        # Instalar dependencias front
+        npm install
+        npm run build
+
+        # php artisan migrate
+        php artisan migrate
+        ```
+
+12. Subir el proyecto a GitHub:
     ```bash
-    composer require laravel/breeze --dev
-    php artisan breeze:install
-    npm install
-    npm run build
-    php artisan migrate
+    git init
+    git add .
+    git commit -m "Proyecto Laravel en blanco"
+    git branch -M main
+    git remote add origin git@github.com:petrix12/laravel_blanco_dockerizado.git
+    git push -u origin main
     ```
