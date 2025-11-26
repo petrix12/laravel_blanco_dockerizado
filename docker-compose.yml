@@ -1,0 +1,67 @@
+services:
+  # 1. SERVICIO APP (PHP-FPM)
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        user: wsl_user
+        uid: 1000
+    image: blanco-app
+    container_name: blanco-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    networks:
+      - webproxy # Se une a la red del proxy
+
+  # 2. SERVICIO NGINX (WEB SERVER)
+  nginx:
+    image: nginx:alpine
+    container_name: blanco-nginx
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - webproxy # Crucial: se une a la red del proxy para ser descubierto
+      
+    # ETIQUETAS (LABELS) DE CONFIGURACIÓN PARA TRAEFIK
+    labels:
+      - "traefik.enable=true"
+      # Nuevo router (debe ser único por proyecto)
+      - "traefik.http.routers.blanco.rule=Host(`blanco.test`)"
+      - "traefik.http.routers.blanco.entrypoints=web"
+      - "traefik.http.services.blanco.loadbalancer.server.port=80"
+      - "traefik.docker.network=webproxy" # Especificar la red interna de Traefik
+
+  # 3. SERVICIO TRAEFIK (PROXY INVERSO LOCAL)
+  traefik:
+    image: traefik:v2.10
+    container_name: blanco-traefik-proxy # Nombre único
+    restart: always
+    command:
+      # Habilita Docker Provider para leer los labels de APP y NGINX
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Define el puerto de escucha (80 en el host)
+      - --entrypoints.web.address=:80 
+    ports:
+      # Expone Traefik al puerto 80 del HOST
+      - "80:80" 
+      # Puedes exponer el dashboard en un puerto diferente para cada proyecto si lo necesitas:
+      #- "8081:8080"
+    volumes:
+      # Montar el socket de Docker para que Traefik pueda leer otros contenedores
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - webproxy
+
+networks:
+  # La red ahora es INTERNA, se crea con el proyecto y se destruye con él.
+  webproxy:
+    name: webproxy-${COMPOSE_PROJECT_NAME} # Añadimos el nombre del proyecto para que sea única
+    driver: bridge
